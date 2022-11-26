@@ -11,6 +11,25 @@ const Message = sequelize.define('message', {
   content: Sequelize.STRING
 })
 
+const Author = sequelize.define('author', {
+  name: {
+    type: Sequelize.STRING,
+    allowNull: false,
+    validate: {
+      len: [3, 15]
+    }
+  }, 
+  email: {
+    type: Sequelize.STRING,
+    allowNull: false,
+    validate: {
+      isEmail: true
+    }
+  }
+})
+
+Message.hasMany(Author)
+
 const app = express()
 
 app.use((req, res, next) => {
@@ -21,11 +40,6 @@ app.use((req, res, next) => {
 app.use(express.static('public'))
 
 app.use(express.json())
-
-// app.locals.messages = [{
-//   title: 'sometitle',
-//   content: 'somecontent'
-// }]
 
 app.get('/ping', (req, res, next) => {
   res.status(200).json({
@@ -100,6 +114,44 @@ app.delete('/messages/:id', async (req, res, next) => {
     next(error)
   }
 })
+
+app.get('/messages/:mid/authors', async (req, res, next) => {
+  try {
+    const message = await Message.findByPk(req.params.mid, { include: [Author] })
+    if (message) {
+      const authors = message.authors
+      res.status(200).json(authors)
+    } else {
+      res.status(404).json({ message: 'not found' })
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/messages/:mid/authors', async (req, res, next) => {
+  try {
+    const message = await Message.findByPk(req.params.mid)
+    if (message) {
+      const author = new Author()
+      author.name = req.body.name
+      author.email = req.body.email
+      author.messageId = message.id
+      await author.save()
+      res.status(201).json(author)
+    } else {
+      res.status(404).json({ message: 'not found' })
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/messages/:mid/authors/:aid', async (req, res, next) => {})
+
+app.put('/messages/:mid/authors/:aid', async (req, res, next) => {})
+
+app.delete('/messages/:mid/authors/:aid', async (req, res, next) => {})
 
 app.use((error, req, res, next) => {
   console.log(error)
